@@ -1,0 +1,53 @@
+name: preview
+
+# Publishes the review copy of a rig page to GitHub Pages (plan § 3) and takes its lane marker off
+# again (plan § 4). The HTML is rendered here and uploaded as a Pages artifact, so no preview is
+# ever committed to this repo — ADR 0003 and AGENTS.md both forbid that.
+on:
+  workflow_dispatch:
+    inputs:
+      page:
+        description: the rig path to save
+        default: /digest/2026-10-28
+      marker:
+        description: carry the lane marker in the banner
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable && corepack prepare pnpm@latest --activate
+      - run: pnpm install
+      - name: render the page
+        env:
+          LANE_ID: lane-07
+          LANE_MARKER: ${{ inputs.marker && vars.LANE_MARKER || '' }}
+        run: |
+          pnpm preview "${{ inputs.page }}" site/index.html
+          echo "banner: $(grep -o 'class="marker">[^<]*' site/index.html)"
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4
