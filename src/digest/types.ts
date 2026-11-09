@@ -19,10 +19,14 @@ export type DigestRow = {
   lastAt: string;
 };
 
+// One count per line by its status, for the night as a whole.
+export type NightCounts = { ok: number; retry: number; fail: number };
+
 // readNight's result: the rows plus a count of lines that didn't parse.
 export type NightDigest = {
   rows: DigestRow[];
   badLines: number;
+  counts: NightCounts;
 };
 
 export type ReadNight = (runsDir: string, night: string) => NightDigest;

@@ -23,7 +23,7 @@ afterAll(() => rmSync(tmpRuns, { recursive: true, force: true }));
 
 describe('readNight', () => {
   it('folds 2026-10-28 into five jobs and counts the bad line', () => {
-    const { rows, badLines } = readNight('runs', '2026-10-28');
+    const { rows, badLines, counts } = readNight('runs', '2026-10-28');
 
     expect(rows.map((r) => r.job)).toEqual([
       'digest/render',
@@ -33,6 +33,7 @@ describe('readNight', () => {
       'rig/rotate-logs',
     ]);
     expect(badLines).toBe(1);
+    expect(counts).toEqual({ ok: 10, retry: 4, fail: 1 });
   });
 
   it('counts runs and retries, and takes status, error and owner from the last line', () => {
@@ -64,7 +65,7 @@ describe('readNight', () => {
   });
 
   it('reads 2026-10-27 with nothing wrong in it', () => {
-    const { rows, badLines } = readNight('runs', '2026-10-27');
+    const { rows, badLines, counts } = readNight('runs', '2026-10-27');
 
     expect(badLines).toBe(0);
     expect(rows.map((r) => r.job)).toEqual([
@@ -75,11 +76,20 @@ describe('readNight', () => {
     ]);
     expect(rows.every((r) => r.lastStatus === 'ok')).toBe(true);
     expect(rows.every((r) => r.retries === 0)).toBe(true);
+    expect(counts).toEqual({ ok: 7, retry: 0, fail: 0 });
   });
 
   it('reads an empty night as a night where nothing ran', () => {
-    expect(readNight(tmpRuns, writeNight('2026-10-01', ''))).toEqual({ rows: [], badLines: 0 });
-    expect(readNight(tmpRuns, writeNight('2026-10-02', '\n\n  \n'))).toEqual({ rows: [], badLines: 0 });
+    expect(readNight(tmpRuns, writeNight('2026-10-01', ''))).toEqual({
+      rows: [],
+      badLines: 0,
+      counts: { ok: 0, retry: 0, fail: 0 },
+    });
+    expect(readNight(tmpRuns, writeNight('2026-10-02', '\n\n  \n'))).toEqual({
+      rows: [],
+      badLines: 0,
+      counts: { ok: 0, retry: 0, fail: 0 },
+    });
   });
 
   it('counts a line that is not a run line and still returns the night', () => {
@@ -96,9 +106,10 @@ describe('readNight', () => {
       ].join('\n'),
     );
 
-    const { rows, badLines } = readNight(tmpRuns, night);
+    const { rows, badLines, counts } = readNight(tmpRuns, night);
 
     expect(badLines).toBe(4);
+    expect(counts).toEqual({ ok: 1, retry: 0, fail: 1 });
     expect(rows).toEqual([
       {
         job: 'lane/sync',
