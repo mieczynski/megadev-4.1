@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { DigestRow, NightLine, ReadNight } from './types.js';
+import type { DigestRow, NightCounts, NightLine, ReadNight } from './types.js';
 
 // A night is named by its date. Anything else never reaches the filesystem, so a `..` in the
 // parameter can't read outside runsDir.
@@ -42,6 +42,7 @@ export const readNight: ReadNight = (runsDir, night) => {
 
   const byJob = new Map<string, DigestRow>();
   let badLines = 0;
+  const counts: NightCounts = { ok: 0, retry: 0, fail: 0 };
 
   for (const raw of text.split(/\r?\n/)) {
     const trimmed = raw.trim();
@@ -52,6 +53,8 @@ export const readNight: ReadNight = (runsDir, night) => {
       badLines += 1;
       continue;
     }
+
+    counts[line.status] += 1;
 
     const row = byJob.get(line.job);
     if (row === undefined) {
@@ -78,7 +81,7 @@ export const readNight: ReadNight = (runsDir, night) => {
   }
 
   const rows = [...byJob.values()].sort((a, b) => (a.job < b.job ? -1 : a.job > b.job ? 1 : 0));
-  return { rows, badLines };
+  return { rows, badLines, counts };
 };
 
 // True when the night has no file on disk, and when `night` isn't a date at all. The digest
